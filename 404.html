@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Redirecting...</title>
+  <script>
+    (function() {
+      var path = window.location.pathname;
+      if (path !== '/' && path !== '/index.html') {
+        window.location.replace('/' + '#' + path.slice(1));
+      } else {
+        window.location.replace('/');
+      }
+    })();
+  </script>
+</head>
+<body>
+  <p>Redirecting to main page...</p>
+</body>
+</html>
