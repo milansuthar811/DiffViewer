@@ -28,16 +28,6 @@ npx serve .
 # or python3 -m http.server 8000
 ```
 
-Open `http://localhost:8000` (or whatever port).
-
-## Deploy to GitHub Pages
-
-1. Push this folder to a GitHub repository
-2. Go to **Settings → Pages**
-3. Source: **Deploy from a branch**
-4. Branch: `main` / `/(root)`
-5. Save → Your site is live at `https://<username>.github.io/<repo>/`
-
 ## Usage
 
 1. Paste text in **Original** (left) and **Modified** (right) panels
