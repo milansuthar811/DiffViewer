@@ -9,54 +9,100 @@
 <body>
   <header class="header">
     <h1>Diff Tool</h1>
-
+    <p class="subtitle">Side-by-side word-level text comparison</p>
   </header>
 
   <main class="main">
-    <div class="toolbar">
-      <div class="toolbar-group">
-        <label for="left-input">Original</label>
-        <textarea id="left-input" placeholder="Paste original text here..."></textarea>
-      </div>
-      <div class="toolbar-group">
-        <label for="right-input">Modified</label>
-        <textarea id="right-input" placeholder="Paste modified text here..."></textarea>
-      </div>
-    </div>
-
-    <div class="options-panel">
-      <details class="options-details">
-        <summary>Advanced Options</summary>
-        <div class="options-grid">
-          <label class="option">
-            <input type="checkbox" id="opt-trim-whitespace" checked>
-            <span>Trim whitespace</span>
-          </label>
-          <label class="option">
-            <input type="checkbox" id="opt-ignore-case">
-            <span>Ignore case</span>
-          </label>
-          <label class="option">
-            <input type="checkbox" id="opt-ignore-whitespace">
-            <span>Ignore all whitespace</span>
-          </label>
-          <label class="option">
-            <input type="checkbox" id="opt-word-diff" checked>
-            <span>Word-level diff</span>
-          </label>
-          <label class="option">
-            <input type="checkbox" id="opt-show-unchanged" checked>
-            <span>Show unchanged</span>
-          </label>
+    <div class="editor-split">
+      <section class="editor-pane" aria-label="Input editors">
+        <div class="toolbar">
+          <div class="toolbar-group">
+            <div class="toolbar-header">
+              <label for="left-input">Original</label>
+              <span class="char-count" id="left-count">0 chars</span>
+            </div>
+            <textarea id="left-input" placeholder="Paste original text here..." spellcheck="false"></textarea>
+          </div>
+          <div class="toolbar-group">
+            <div class="toolbar-header">
+              <label for="right-input">Modified</label>
+              <span class="char-count" id="right-count">0 chars</span>
+            </div>
+            <textarea id="right-input" placeholder="Paste modified text here..." spellcheck="false"></textarea>
+          </div>
         </div>
-      </details>
-    </div>
+      </section>
 
-    <div class="actions">
-      <button id="btn-diff" class="btn primary">Compare</button>
-      <button id="btn-share" class="btn secondary" disabled>Share Link</button>
-      <button id="btn-clear" class="btn ghost">Clear</button>
-      <button id="btn-swap" class="btn ghost" title="Swap left/right">⇄ Swap</button>
+      <aside class="sidebar" aria-label="Options and history">
+        <div class="sidebar-tabs">
+          <button class="tab-btn active" data-tab="options" aria-selected="true">Options</button>
+          <button class="tab-btn" data-tab="history" aria-selected="false">History (10)</button>
+        </div>
+
+        <div class="tab-panel" id="tab-options" role="tabpanel">
+          <details class="options-details open">
+            <summary>Comparison Options</summary>
+            <div class="options-grid">
+              <label class="option">
+                <input type="checkbox" id="opt-trim-whitespace" checked>
+                <span>Trim whitespace</span>
+              </label>
+              <label class="option">
+                <input type="checkbox" id="opt-ignore-case">
+                <span>Ignore case</span>
+              </label>
+              <label class="option">
+                <input type="checkbox" id="opt-ignore-whitespace">
+                <span>Ignore all whitespace</span>
+              </label>
+              <label class="option">
+                <input type="checkbox" id="opt-word-diff" checked>
+                <span>Word-level diff</span>
+              </label>
+              <label class="option">
+                <input type="checkbox" id="opt-show-unchanged" checked>
+                <span>Show unchanged</span>
+              </label>
+              <label class="option">
+                <input type="checkbox" id="opt-line-numbers" checked>
+                <span>Line numbers</span>
+              </label>
+              <label class="option">
+                <input type="checkbox" id="opt-wrap-lines" checked>
+                <span>Wrap long lines</span>
+              </label>
+              <label class="option">
+                <input type="checkbox" id="opt-auto-diff">
+                <span>Auto-diff on type</span>
+              </label>
+            </div>
+            <div class="options-grid">
+              <label class="option option-select">
+                <span>Diff mode</span>
+                <select id="opt-diff-mode">
+                  <option value="side-by-side">Side by side</option>
+                  <option value="unified">Unified (single pane)</option>
+                </select>
+              </label>
+            </div>
+          </details>
+        </div>
+
+        <div class="tab-panel hidden" id="tab-history" role="tabpanel">
+          <div class="history-list" id="history-list">
+            <div class="history-empty">No recent diffs yet</div>
+          </div>
+        </div>
+
+        <div class="actions-sidebar">
+          <button id="btn-diff" class="btn primary wide" title="Ctrl+Enter">Compare</button>
+          <button id="btn-share" class="btn secondary wide" disabled title="Ctrl+Shift+S">Share Link</button>
+          <button id="btn-swap" class="btn ghost wide" title="Ctrl+Shift+W">⇄ Swap</button>
+          <button id="btn-clear" class="btn ghost wide" title="Ctrl+Shift+X">Clear All</button>
+          <button id="btn-export-md" class="btn ghost wide" title="Ctrl+Shift+E">Export MD</button>
+          <button id="btn-export-html" class="btn ghost wide" title="Ctrl+Shift+H">Export HTML</button>
+        </div>
+      </aside>
     </div>
 
     <div id="diff-output" class="diff-output hidden">
@@ -82,7 +128,7 @@
   <footer class="footer">
     <a href="https://github.com" target="_blank" rel="noopener">Host on GitHub Pages</a>
     <span>•</span>
-    <a href="#" id="link-source">View Source</a>
+    <span title="Press ? for shortcuts">Shortcuts: ?</span>
   </footer>
 
   <script src="app.js"></script>
