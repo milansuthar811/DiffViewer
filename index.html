@@ -9,46 +9,7 @@
 <body>
   <header class="header">
     <h1>Diff Tool</h1>
-    <div class="header-sub">
-
-      <details class="options-details" id="options-panel">
-        <summary>Comparison Options</summary>
-        <div class="options-grid">
-          <label class="option">
-            <input type="checkbox" id="opt-trim-whitespace" checked>
-            <span>Trim whitespace</span>
-          </label>
-          <label class="option">
-            <input type="checkbox" id="opt-ignore-case">
-            <span>Ignore case</span>
-          </label>
-          <label class="option">
-            <input type="checkbox" id="opt-ignore-whitespace">
-            <span>Ignore all whitespace</span>
-          </label>
-          <label class="option">
-            <input type="checkbox" id="opt-word-diff" checked>
-            <span>Word-level diff</span>
-          </label>
-          <label class="option">
-            <input type="checkbox" id="opt-show-unchanged" checked>
-            <span>Show unchanged</span>
-          </label>
-          <label class="option">
-            <input type="checkbox" id="opt-line-numbers" checked>
-            <span>Line numbers</span>
-          </label>
-          <label class="option">
-            <input type="checkbox" id="opt-wrap-lines" checked>
-            <span>Wrap long lines</span>
-          </label>
-          <label class="option">
-            <input type="checkbox" id="opt-auto-diff">
-            <span>Auto-diff on type</span>
-          </label>
-        </div>
-      </details>
-      </div>
+    <p class="subtitle">Side-by-side word-level text comparison</p>
   </header>
 
   <button class="theme-float" id="btn-theme" type="button" title="Toggle dark/light mode" aria-label="Toggle dark/light mode">
@@ -57,7 +18,56 @@
   </button>
 
   <main class="main">
-    <div class="editor-split">
+    <div class="layout-split">
+      <aside class="left-panel" aria-label="Comparison options and history">
+        <div class="sidebar-tabs">
+          <button class="tab-btn active" data-tab="options" aria-selected="true">Options</button>
+          <button class="tab-btn" data-tab="history" aria-selected="false">History (10)</button>
+        </div>
+
+        <div class="tab-panel" id="tab-options" role="tabpanel">
+          <div class="options-list">
+            <label class="option-row">
+              <input type="checkbox" id="opt-trim-whitespace" checked>
+              <span>Trim whitespace</span>
+            </label>
+            <label class="option-row">
+              <input type="checkbox" id="opt-ignore-case">
+              <span>Ignore case</span>
+            </label>
+            <label class="option-row">
+              <input type="checkbox" id="opt-ignore-whitespace">
+              <span>Ignore all whitespace</span>
+            </label>
+            <label class="option-row">
+              <input type="checkbox" id="opt-word-diff" checked>
+              <span>Word-level diff</span>
+            </label>
+            <label class="option-row">
+              <input type="checkbox" id="opt-show-unchanged" checked>
+              <span>Show unchanged</span>
+            </label>
+            <label class="option-row">
+              <input type="checkbox" id="opt-wrap-lines" checked>
+              <span>Wrap long lines</span>
+            </label>
+            <div class="option-row mode-row">
+              <span>Layout</span>
+              <div class="seg" role="group" aria-label="Diff layout">
+                <button class="seg-btn active" data-mode="side-by-side" type="button">Split</button>
+                <button class="seg-btn" data-mode="unified" type="button">Unified</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="tab-panel hidden" id="tab-history" role="tabpanel">
+          <div class="history-list" id="history-list">
+            <div class="history-empty">No recent diffs yet</div>
+          </div>
+        </div>
+      </aside>
+
       <section class="editor-pane" aria-label="Input editors">
         <div class="toolbar">
           <div class="toolbar-group">
@@ -75,43 +85,14 @@
             <textarea id="right-input" placeholder="Paste modified text here..." spellcheck="false"></textarea>
           </div>
         </div>
+        <button id="btn-diff" class="compare-large" type="button" title="Ctrl+Enter">Compare</button>
       </section>
-
-      <aside class="sidebar" aria-label="Compare and history">
-        <div class="sidebar-sticky">
-          <div class="sidebar-tabs">
-            <button class="tab-btn active" data-tab="options" aria-selected="true">Options</button>
-            <button class="tab-btn" data-tab="history" aria-selected="false">History (10)</button>
-          </div>
-          <div class="actions-sidebar">
-            <button id="btn-diff" class="btn primary wide" title="Ctrl+Enter">Compare</button>
-          </div>
-        </div>
-
-        <div class="tab-panel" id="tab-options" role="tabpanel">
-          <p class="tab-note">Comparison options now live in the header, right of the title.</p>
-          <button id="btn-open-options" class="btn ghost wide">Open Comparison Options</button>
-        </div>
-
-        <div class="tab-panel hidden" id="tab-history" role="tabpanel">
-          <div class="history-list" id="history-list">
-            <div class="history-empty">No recent diffs yet</div>
-          </div>
-        </div>
-      </aside>
     </div>
 
     <div class="action-bar">
       <button id="btn-share" class="btn secondary" disabled title="Ctrl+Shift+S">Share Link</button>
       <button id="btn-swap" class="btn ghost" title="Ctrl+Shift+W">⇄ Swap</button>
       <button id="btn-clear" class="btn ghost" title="Ctrl+Shift+X">Clear All</button>
-      <label class="action-mode">
-        <span>Diff mode</span>
-        <select id="opt-diff-mode">
-          <option value="side-by-side">Side by side</option>
-          <option value="unified">Unified</option>
-        </select>
-      </label>
     </div>
 
     <div id="diff-output" class="diff-output hidden">

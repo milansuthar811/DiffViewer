@@ -19,11 +19,10 @@
   const optIgnoreWhitespace = document.getElementById('opt-ignore-whitespace');
   const optWordDiff = document.getElementById('opt-word-diff');
   const optShowUnchanged = document.getElementById('opt-show-unchanged');
-  const optLineNumbers = document.getElementById('opt-line-numbers');
   const optWrapLines = document.getElementById('opt-wrap-lines');
-  const optAutoDiff = document.getElementById('opt-auto-diff');
-  const optDiffMode = document.getElementById('opt-diff-mode');
+  const segBtns = document.querySelectorAll('.seg-btn');
 
+  let currentDiffMode = 'side-by-side';
   let currentDiffData = null;
   let autoDiffTimer = null;
   let isLoadingFromHash = false;
@@ -49,14 +48,13 @@
         optIgnoreWhitespace.checked = opts.ignoreWhitespace ?? false;
         optWordDiff.checked = opts.wordDiff ?? true;
         optShowUnchanged.checked = opts.showUnchanged ?? true;
-        optLineNumbers.checked = opts.lineNumbers ?? true;
         optWrapLines.checked = opts.wrapLines ?? true;
-        optAutoDiff.checked = opts.autoDiff ?? false;
-        optDiffMode.value = opts.diffMode || 'side-by-side';
+        currentDiffMode = opts.diffMode === 'unified' ? 'unified' : 'side-by-side';
       }
     } catch (e) {
       console.warn('Failed to load options:', e);
     }
+    applyModeUI();
   }
 
   function saveOptions() {
@@ -67,15 +65,24 @@
         ignoreWhitespace: optIgnoreWhitespace.checked,
         wordDiff: optWordDiff.checked,
         showUnchanged: optShowUnchanged.checked,
-        lineNumbers: optLineNumbers.checked,
         wrapLines: optWrapLines.checked,
-        autoDiff: optAutoDiff.checked,
-        diffMode: optDiffMode.value
+        diffMode: currentDiffMode
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(opts));
     } catch (e) {
       console.warn('Failed to save options:', e);
     }
+  }
+
+  function applyModeUI() {
+    segBtns.forEach(b => b.classList.toggle('active', b.dataset.mode === currentDiffMode));
+  }
+
+  function setDiffMode(mode) {
+    currentDiffMode = mode;
+    applyModeUI();
+    saveOptions();
+    if (currentDiffData) runDiff();
   }
 
   function loadHistory() {
@@ -311,28 +318,50 @@
     return result;
   }
 
-  function buildDiffLines(diff, options) {
+  function buildDiffLines(diff, options, mode) {
     const showUnchanged = options.showUnchanged;
+    const unified = mode === 'unified';
     const lines = { left: [], right: [] };
     let currentLine = { left: [], right: [] };
     let lineNum = 1;
 
     function flushLine() {
       if (currentLine.left.length === 0 && currentLine.right.length === 0) return;
-
       lines.left.push({
         num: lineNum,
         tokens: currentLine.left,
-        hasChanges: currentLine.left.some(t => t.type !== 'equal') || currentLine.right.some(t => t.type !== 'equal')
+        hasChanges: currentLine.left.some(t => t.type !== 'equal')
       });
       lines.right.push({
         num: lineNum,
         tokens: currentLine.right,
-        hasChanges: currentLine.left.some(t => t.type !== 'equal') || currentLine.right.some(t => t.type !== 'equal')
+        hasChanges: currentLine.right.some(t => t.type !== 'equal')
       });
-
       lineNum++;
       currentLine = { left: [], right: [] };
+    }
+
+    function pushLeft(type, value) {
+      currentLine.left.push({ type, value });
+      if (unified) currentLine.right.push({ type, value });
+    }
+
+    function pushRight(type, value) {
+      currentLine.right.push({ type, value });
+      if (unified) currentLine.left.push({ type, value });
+    }
+
+    function pushSplit(type, value) {
+      if (type === 'added') {
+        pushLeft('equal', '');
+        pushRight('added', value);
+      } else if (type === 'removed') {
+        pushLeft('removed', value);
+        pushRight('equal', '');
+      } else {
+        pushLeft('equal', value);
+        pushRight('equal', value);
+      }
     }
 
     diff.forEach(token => {
@@ -341,23 +370,28 @@
         return;
       }
 
-      const shouldShow = showUnchanged || token.type !== 'equal';
-      if (!shouldShow) return;
+      if (!showUnchanged && token.type === 'equal') return;
 
-      const leftType = token.type === 'added' ? 'equal' : token.type;
-      const rightType = token.type === 'removed' ? 'equal' : token.type;
+      const type = token.type;
+      const value = token.value;
 
-      currentLine.left.push({ type: leftType, value: token.value });
-      currentLine.right.push({ type: rightType, value: token.value });
+      if (unified) {
+        pushLeft(type, value);
+      } else {
+        pushSplit(type, value);
+      }
 
-      if (token.value.includes('\n')) {
-        const parts = token.value.split('\n');
+      if (value.includes('\n')) {
+        const parts = value.split('\n');
         parts.forEach((part, idx) => {
           if (idx > 0) {
             flushLine();
             if (part.length > 0) {
-              currentLine.left.push({ type: leftType, value: part });
-              currentLine.right.push({ type: rightType, value: part });
+              if (unified) {
+                pushLeft(type, part);
+              } else {
+                pushSplit(type, part);
+              }
             }
           }
         });
@@ -369,9 +403,8 @@
   }
 
   function renderDiffLines(lines, pane, isLeft, options, startIdx, endIdx) {
-    const showLineNumbers = optLineNumbers.checked;
+    const showLineNumbers = true;
     const wrapLines = optWrapLines.checked;
-    const diffMode = optDiffMode.value;
 
     const container = document.createElement('div');
     container.className = 'diff-pane-content';
@@ -514,10 +547,9 @@
       const diff = diffTokens(leftTokens, rightTokens);
       const diffTime = performance.now() - startTime;
 
-      const diffLines = buildDiffLines(diff, options);
+      const diffLines = buildDiffLines(diff, options, currentDiffMode);
 
-      const diffMode = optDiffMode.value;
-      if (diffMode === 'unified') {
+      if (currentDiffMode === 'unified') {
         leftPane.parentElement.style.gridTemplateColumns = '1fr';
         rightPane.style.display = 'none';
         renderDiffProgressive(diffLines, leftPane, true, options);
@@ -675,11 +707,15 @@
   btnClear.addEventListener('click', clearAll);
   btnSwap.addEventListener('click', swapInputs);
 
-  [optTrimWhitespace, optIgnoreCase, optIgnoreWhitespace, optWordDiff, optShowUnchanged, optLineNumbers, optWrapLines, optAutoDiff, optDiffMode].forEach(opt => {
+  [optTrimWhitespace, optIgnoreCase, optIgnoreWhitespace, optWordDiff, optShowUnchanged, optWrapLines].forEach(opt => {
     opt.addEventListener('change', () => {
       saveOptions();
       if (currentDiffData) runDiff();
     });
+  });
+
+  segBtns.forEach(btn => {
+    btn.addEventListener('click', () => setDiffMode(btn.dataset.mode));
   });
 
   function updateCharCounts() {
@@ -689,14 +725,21 @@
     if (rightCount) rightCount.textContent = `${rightInput.value.length} chars`;
   }
 
+  function blurDiff() {
+    if (leftInput.value || rightInput.value) runDiff();
+  }
+
   leftInput.addEventListener('input', () => {
     updateCharCounts();
-    if (optAutoDiff.checked) debouncedDiff();
+    debouncedDiff();
   });
   rightInput.addEventListener('input', () => {
     updateCharCounts();
-    if (optAutoDiff.checked) debouncedDiff();
+    debouncedDiff();
   });
+
+  leftInput.addEventListener('blur', blurDiff);
+  rightInput.addEventListener('blur', blurDiff);
 
   leftInput.addEventListener('paste', () => setTimeout(runDiff, 0));
   rightInput.addEventListener('paste', () => setTimeout(runDiff, 0));
@@ -743,12 +786,6 @@
       document.getElementById('tab-options').classList.toggle('hidden', tab !== 'options');
       document.getElementById('tab-history').classList.toggle('hidden', tab !== 'history');
     });
-  });
-
-  document.getElementById('btn-open-options').addEventListener('click', () => {
-    const panel = document.getElementById('options-panel');
-    panel.open = true;
-    panel.scrollIntoView({ behavior: 'smooth', block: 'center' });
   });
 
   loadOptions();
