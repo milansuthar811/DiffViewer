@@ -33,6 +33,8 @@
   let allDiffLines = { left: [], right: [] };
 
   const STORAGE_KEY = 'diff-tool-options';
+  const HISTORY_KEY = 'diff-tool-history';
+  const MAX_HISTORY = 10;
   const MAX_TOKENS_FAST_PATH = 50000;
   const RENDER_CHUNK_SIZE = 500;
   const VIRTUALIZATION_THRESHOLD = 2000;
@@ -74,6 +76,102 @@
     } catch (e) {
       console.warn('Failed to save options:', e);
     }
+  }
+
+  function loadHistory() {
+    try {
+      const stored = localStorage.getItem(HISTORY_KEY);
+      return stored ? JSON.parse(stored) : [];
+    } catch (e) {
+      console.warn('Failed to load history:', e);
+      return [];
+    }
+  }
+
+  function saveHistory(list) {
+    try {
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(list.slice(0, MAX_HISTORY)));
+    } catch (e) {
+      console.warn('Failed to save history:', e);
+    }
+  }
+
+  function pushHistory(entry) {
+    const list = loadHistory();
+    const top = list[0];
+    if (top && top.left === entry.left && top.right === entry.right) return;
+    list.unshift({ ...entry, time: Date.now() });
+    saveHistory(list);
+    renderHistory();
+  }
+
+  function renderHistory() {
+    const list = loadHistory();
+    const container = document.getElementById('history-list');
+    const tabBtn = document.querySelector('.tab-btn[data-tab="history"]');
+    if (tabBtn) tabBtn.textContent = `History (${list.length})`;
+
+    container.innerHTML = '';
+
+    if (list.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'history-empty';
+      empty.textContent = 'No recent diffs yet';
+      container.appendChild(empty);
+      return;
+    }
+
+    list.forEach((entry, idx) => {
+      const item = document.createElement('div');
+      item.className = 'history-item';
+
+      const header = document.createElement('div');
+      header.className = 'history-item-header';
+      const title = document.createElement('span');
+      title.textContent = `Diff ${list.length - idx}`;
+      const time = document.createElement('span');
+      time.className = 'history-item-time';
+      time.textContent = new Date(entry.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      header.appendChild(title);
+      header.appendChild(time);
+      item.appendChild(header);
+
+      const preview = document.createElement('div');
+      preview.className = 'history-item-preview';
+      const leftPrev = document.createElement('span');
+      leftPrev.className = 'history-preview-left';
+      leftPrev.textContent = entry.left.replace(/\s+/g, ' ').trim().slice(0, 60) || '(empty)';
+      const rightPrev = document.createElement('span');
+      rightPrev.className = 'history-preview-right';
+      rightPrev.textContent = entry.right.replace(/\s+/g, ' ').trim().slice(0, 60) || '(empty)';
+      preview.appendChild(leftPrev);
+      preview.appendChild(rightPrev);
+      item.appendChild(preview);
+
+      const actions = document.createElement('div');
+      actions.className = 'history-item-actions';
+      const delBtn = document.createElement('button');
+      delBtn.className = 'btn ghost';
+      delBtn.textContent = 'Delete';
+      delBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const next = loadHistory();
+        next.splice(idx, 1);
+        saveHistory(next);
+        renderHistory();
+      });
+      actions.appendChild(delBtn);
+      item.appendChild(actions);
+
+      item.addEventListener('click', () => {
+        leftInput.value = entry.left;
+        rightInput.value = entry.right;
+        updateCharCounts();
+        runDiff();
+      });
+
+      container.appendChild(item);
+    });
   }
 
   function showToast(message, type = 'info') {
@@ -119,22 +217,19 @@
     const n = oldTokens.length;
     const m = newTokens.length;
     const maxD = n + m;
-    const vp = new Array(2 * maxD + 1);
-    const vn = new Array(2 * maxD + 1);
+    const v = new Array(2 * maxD + 1);
     const offset = maxD;
+    const rows = [];
 
-    const trace = [];
+    v[offset + 1] = 0;
 
     for (let d = 0; d <= maxD; d++) {
-      const v = (d % 2 === 0) ? vp : vn;
-      const prevV = (d % 2 === 0) ? vn : vp;
-
       for (let k = -d; k <= d; k += 2) {
         let x;
-        if (k === -d || (k !== d && prevV[offset + k - 1] < prevV[offset + k + 1])) {
-          x = prevV[offset + k + 1];
+        if (k === -d || (k !== d && v[offset + k - 1] < v[offset + k + 1])) {
+          x = v[offset + k + 1];
         } else {
-          x = prevV[offset + k - 1] + 1;
+          x = v[offset + k - 1] + 1;
         }
 
         let y = x - k;
@@ -147,24 +242,28 @@
         v[offset + k] = x;
 
         if (x >= n && y >= m) {
-          return backtrack(oldTokens, newTokens, trace, n, m, d);
+          rows.push(v.slice());
+          return backtrack(oldTokens, newTokens, rows, d);
         }
       }
-      trace.push(v.slice());
+      rows.push(v.slice());
     }
 
-    return backtrack(oldTokens, newTokens, trace, n, m, maxD);
+    return backtrack(oldTokens, newTokens, rows, maxD);
   }
 
-  function backtrack(oldTokens, newTokens, trace, n, m, d) {
+  function backtrack(oldTokens, newTokens, rows, d) {
     const result = [];
+    const n = oldTokens.length;
+    const m = newTokens.length;
+    const offset = n + m;
     let x = n, y = m;
 
-    for (let i = trace.length - 1; i >= 0; i--) {
-      const v = trace[i];
-      const offset = n + m;
+    for (let i = d - 1; i >= 0; i--) {
+      const v = rows[i];
+      const dCur = i + 1;
       const k = x - y;
-      const prevK = (k === -i || (k !== i && v[offset + k - 1] < v[offset + k + 1])) ? k + 1 : k - 1;
+      const prevK = (k === -dCur || (k !== dCur && v[offset + k - 1] < v[offset + k + 1])) ? k + 1 : k - 1;
       const prevX = v[offset + prevK];
       const prevY = prevX - prevK;
 
@@ -180,6 +279,11 @@
         result.unshift({ type: 'added', value: newTokens[y - 1] });
         y--;
       }
+    }
+
+    while (x > 0 && y > 0) {
+      result.unshift({ type: 'equal', value: oldTokens[x - 1] });
+      x--; y--;
     }
 
     return result;
@@ -432,6 +536,10 @@
       loading.classList.add('hidden');
       btnShare.disabled = false;
 
+      if (leftText || rightText) {
+        pushHistory({ left: leftText, right: rightText, options });
+      }
+
       const renderTime = performance.now() - startTime - diffTime;
       if (totalTokens > 10000 || diffTime > 100) {
         showToast(`Diff: ${diffTime.toFixed(0)}ms, Render: ${renderTime.toFixed(0)}ms (${totalTokens} tokens)`, 'info');
@@ -447,19 +555,25 @@
     autoDiffTimer = setTimeout(runDiff, 500);
   }
 
+  let scrollSynced = false;
+
   function syncScroll() {
+    if (!scrollSynced) {
+      leftPane.addEventListener('scroll', () => {
+        rightPane.scrollTop = leftPane.scrollTop;
+        rightPane.scrollLeft = leftPane.scrollLeft;
+      }, { passive: true });
+
+      rightPane.addEventListener('scroll', () => {
+        leftPane.scrollTop = rightPane.scrollTop;
+        leftPane.scrollLeft = rightPane.scrollLeft;
+      }, { passive: true });
+
+      scrollSynced = true;
+    }
+
     leftPane.scrollTop = 0;
     rightPane.scrollTop = 0;
-
-    leftPane.addEventListener('scroll', () => {
-      rightPane.scrollTop = leftPane.scrollTop;
-      rightPane.scrollLeft = leftPane.scrollLeft;
-    }, { passive: true });
-
-    rightPane.addEventListener('scroll', () => {
-      leftPane.scrollTop = rightPane.scrollTop;
-      leftPane.scrollLeft = rightPane.scrollLeft;
-    }, { passive: true });
   }
 
   function generateShareUrl() {
@@ -562,7 +676,7 @@
   }
 
   function escapeHtml(text) {
-    return text.replace(/&/g, '&').replace(/</g, '<').replace(/>/g, '>');
+    return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
 
   function showShortcuts() {
@@ -594,12 +708,24 @@
     });
   });
 
+  function updateCharCounts() {
+    const leftCount = document.getElementById('left-count');
+    const rightCount = document.getElementById('right-count');
+    if (leftCount) leftCount.textContent = `${leftInput.value.length} chars`;
+    if (rightCount) rightCount.textContent = `${rightInput.value.length} chars`;
+  }
+
   leftInput.addEventListener('input', () => {
+    updateCharCounts();
     if (optAutoDiff.checked) debouncedDiff();
   });
   rightInput.addEventListener('input', () => {
+    updateCharCounts();
     if (optAutoDiff.checked) debouncedDiff();
   });
+
+  leftInput.addEventListener('paste', () => setTimeout(runDiff, 0));
+  rightInput.addEventListener('paste', () => setTimeout(runDiff, 0));
 
   document.addEventListener('keydown', (e) => {
     if (e.target.tagName === 'TEXTAREA') {
@@ -637,7 +763,22 @@
     }
   });
 
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach(b => {
+        b.classList.remove('active');
+        b.setAttribute('aria-selected', 'false');
+      });
+      btn.classList.add('active');
+      btn.setAttribute('aria-selected', 'true');
+      const tab = btn.dataset.tab;
+      document.getElementById('tab-options').classList.toggle('hidden', tab !== 'options');
+      document.getElementById('tab-history').classList.toggle('hidden', tab !== 'history');
+    });
+  });
+
   loadOptions();
+  renderHistory();
 
   if (!loadFromHash()) {
     leftInput.value = '';
