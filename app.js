@@ -382,6 +382,9 @@
       const lineDiv = document.createElement('div');
       lineDiv.className = 'diff-line';
       lineDiv.dataset.lineNum = line.num;
+      if (line.hasChanges) {
+        lineDiv.classList.add('diff-line-changed');
+      }
 
       if (showLineNumbers) {
         const numSpan = document.createElement('span');
@@ -650,31 +653,6 @@
     if (currentDiffData) runDiff();
   }
 
-  function exportDiff(format) {
-    if (!currentDiffData) return;
-    const diffMode = optDiffMode.value;
-    let output = '';
-
-    if (format === 'markdown') {
-      output = '# Diff\n\n';
-      output += '## Original\n```\n' + currentDiffData.left + '\n```\n\n';
-      output += '## Modified\n```\n' + currentDiffData.right + '\n```\n';
-    } else if (format === 'html') {
-      output = '<html><head><style>body{font-family:monospace}.added{background:#193825;color:#3fb950}.removed{background:#491117;color:#f85149;text-decoration:line-through}</style></head><body>';
-      output += '<h1>Diff</h1><h2>Original</h2><pre>' + escapeHtml(currentDiffData.left) + '</pre>';
-      output += '<h2>Modified</h2><pre>' + escapeHtml(currentDiffData.right) + '</pre></body></html>';
-    }
-
-    const blob = new Blob([output], { type: format === 'html' ? 'text/html' : 'text/markdown' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `diff.${format === 'html' ? 'html' : 'md'}`;
-    a.click();
-    URL.revokeObjectURL(url);
-    showToast(`Exported as ${format.toUpperCase()}`, 'success');
-  }
-
   function escapeHtml(text) {
     return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
@@ -685,8 +663,6 @@
       ['Ctrl+Shift+S', 'Share link'],
       ['Ctrl+Shift+X', 'Clear'],
       ['Ctrl+Shift+W', 'Swap panes'],
-      ['Ctrl+Shift+E', 'Export Markdown'],
-      ['Ctrl+Shift+H', 'Export HTML'],
       ['?', 'Show this help']
     ];
     let msg = 'Keyboard Shortcuts:\n';
@@ -698,8 +674,6 @@
   btnShare.addEventListener('click', copyShareLink);
   btnClear.addEventListener('click', clearAll);
   btnSwap.addEventListener('click', swapInputs);
-  document.getElementById('btn-export-md').addEventListener('click', () => exportDiff('markdown'));
-  document.getElementById('btn-export-html').addEventListener('click', () => exportDiff('html'));
 
   [optTrimWhitespace, optIgnoreCase, optIgnoreWhitespace, optWordDiff, optShowUnchanged, optLineNumbers, optWrapLines, optAutoDiff, optDiffMode].forEach(opt => {
     opt.addEventListener('change', () => {
@@ -753,12 +727,6 @@
         case 'w':
           if (e.shiftKey) { e.preventDefault(); swapInputs(); }
           break;
-        case 'e':
-          if (e.shiftKey) { e.preventDefault(); exportDiff('markdown'); }
-          break;
-        case 'h':
-          if (e.shiftKey) { e.preventDefault(); exportDiff('html'); }
-          break;
       }
     }
   });
@@ -775,6 +743,12 @@
       document.getElementById('tab-options').classList.toggle('hidden', tab !== 'options');
       document.getElementById('tab-history').classList.toggle('hidden', tab !== 'history');
     });
+  });
+
+  document.getElementById('btn-open-options').addEventListener('click', () => {
+    const panel = document.getElementById('options-panel');
+    panel.open = true;
+    panel.scrollIntoView({ behavior: 'smooth', block: 'center' });
   });
 
   loadOptions();

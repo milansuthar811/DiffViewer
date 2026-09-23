@@ -9,8 +9,52 @@
 <body>
   <header class="header">
     <h1>Diff Tool</h1>
-    <p class="subtitle">Side-by-side word-level text comparison</p>
+    <div class="header-sub">
+
+      <details class="options-details" id="options-panel">
+        <summary>Comparison Options</summary>
+        <div class="options-grid">
+          <label class="option">
+            <input type="checkbox" id="opt-trim-whitespace" checked>
+            <span>Trim whitespace</span>
+          </label>
+          <label class="option">
+            <input type="checkbox" id="opt-ignore-case">
+            <span>Ignore case</span>
+          </label>
+          <label class="option">
+            <input type="checkbox" id="opt-ignore-whitespace">
+            <span>Ignore all whitespace</span>
+          </label>
+          <label class="option">
+            <input type="checkbox" id="opt-word-diff" checked>
+            <span>Word-level diff</span>
+          </label>
+          <label class="option">
+            <input type="checkbox" id="opt-show-unchanged" checked>
+            <span>Show unchanged</span>
+          </label>
+          <label class="option">
+            <input type="checkbox" id="opt-line-numbers" checked>
+            <span>Line numbers</span>
+          </label>
+          <label class="option">
+            <input type="checkbox" id="opt-wrap-lines" checked>
+            <span>Wrap long lines</span>
+          </label>
+          <label class="option">
+            <input type="checkbox" id="opt-auto-diff">
+            <span>Auto-diff on type</span>
+          </label>
+        </div>
+      </details>
+      </div>
   </header>
+
+  <button class="theme-float" id="btn-theme" type="button" title="Toggle dark/light mode" aria-label="Toggle dark/light mode">
+    <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+    <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+  </button>
 
   <main class="main">
     <div class="editor-split">
@@ -33,59 +77,20 @@
         </div>
       </section>
 
-      <aside class="sidebar" aria-label="Options and history">
-        <div class="sidebar-tabs">
-          <button class="tab-btn active" data-tab="options" aria-selected="true">Options</button>
-          <button class="tab-btn" data-tab="history" aria-selected="false">History (10)</button>
+      <aside class="sidebar" aria-label="Compare and history">
+        <div class="sidebar-sticky">
+          <div class="sidebar-tabs">
+            <button class="tab-btn active" data-tab="options" aria-selected="true">Options</button>
+            <button class="tab-btn" data-tab="history" aria-selected="false">History (10)</button>
+          </div>
+          <div class="actions-sidebar">
+            <button id="btn-diff" class="btn primary wide" title="Ctrl+Enter">Compare</button>
+          </div>
         </div>
 
         <div class="tab-panel" id="tab-options" role="tabpanel">
-          <details class="options-details open">
-            <summary>Comparison Options</summary>
-            <div class="options-grid">
-              <label class="option">
-                <input type="checkbox" id="opt-trim-whitespace" checked>
-                <span>Trim whitespace</span>
-              </label>
-              <label class="option">
-                <input type="checkbox" id="opt-ignore-case">
-                <span>Ignore case</span>
-              </label>
-              <label class="option">
-                <input type="checkbox" id="opt-ignore-whitespace">
-                <span>Ignore all whitespace</span>
-              </label>
-              <label class="option">
-                <input type="checkbox" id="opt-word-diff" checked>
-                <span>Word-level diff</span>
-              </label>
-              <label class="option">
-                <input type="checkbox" id="opt-show-unchanged" checked>
-                <span>Show unchanged</span>
-              </label>
-              <label class="option">
-                <input type="checkbox" id="opt-line-numbers" checked>
-                <span>Line numbers</span>
-              </label>
-              <label class="option">
-                <input type="checkbox" id="opt-wrap-lines" checked>
-                <span>Wrap long lines</span>
-              </label>
-              <label class="option">
-                <input type="checkbox" id="opt-auto-diff">
-                <span>Auto-diff on type</span>
-              </label>
-            </div>
-            <div class="options-grid">
-              <label class="option option-select">
-                <span>Diff mode</span>
-                <select id="opt-diff-mode">
-                  <option value="side-by-side">Side by side</option>
-                  <option value="unified">Unified (single pane)</option>
-                </select>
-              </label>
-            </div>
-          </details>
+          <p class="tab-note">Comparison options now live in the header, right of the title.</p>
+          <button id="btn-open-options" class="btn ghost wide">Open Comparison Options</button>
         </div>
 
         <div class="tab-panel hidden" id="tab-history" role="tabpanel">
@@ -93,16 +98,20 @@
             <div class="history-empty">No recent diffs yet</div>
           </div>
         </div>
-
-        <div class="actions-sidebar">
-          <button id="btn-diff" class="btn primary wide" title="Ctrl+Enter">Compare</button>
-          <button id="btn-share" class="btn secondary wide" disabled title="Ctrl+Shift+S">Share Link</button>
-          <button id="btn-swap" class="btn ghost wide" title="Ctrl+Shift+W">⇄ Swap</button>
-          <button id="btn-clear" class="btn ghost wide" title="Ctrl+Shift+X">Clear All</button>
-          <button id="btn-export-md" class="btn ghost wide" title="Ctrl+Shift+E">Export MD</button>
-          <button id="btn-export-html" class="btn ghost wide" title="Ctrl+Shift+H">Export HTML</button>
-        </div>
       </aside>
+    </div>
+
+    <div class="action-bar">
+      <button id="btn-share" class="btn secondary" disabled title="Ctrl+Shift+S">Share Link</button>
+      <button id="btn-swap" class="btn ghost" title="Ctrl+Shift+W">⇄ Swap</button>
+      <button id="btn-clear" class="btn ghost" title="Ctrl+Shift+X">Clear All</button>
+      <label class="action-mode">
+        <span>Diff mode</span>
+        <select id="opt-diff-mode">
+          <option value="side-by-side">Side by side</option>
+          <option value="unified">Unified</option>
+        </select>
+      </label>
     </div>
 
     <div id="diff-output" class="diff-output hidden">
@@ -125,12 +134,32 @@
     <div id="loading" class="loading hidden">Computing diff...</div>
   </main>
 
-  <footer class="footer">
-    <a href="https://github.com" target="_blank" rel="noopener">Host on GitHub Pages</a>
-    <span>•</span>
-    <span title="Press ? for shortcuts">Shortcuts: ?</span>
-  </footer>
-
   <script src="app.js"></script>
+  <script>
+    (function() {
+      var btn = document.getElementById('btn-theme');
+      var root = document.documentElement;
+      var KEY = 'diff-tool-theme';
+      try {
+        var saved = localStorage.getItem(KEY);
+        if (saved === 'light' || saved === 'dark') {
+          root.setAttribute('data-theme', saved);
+        }
+      } catch (e) {}
+      function applyIcon() {
+        var dark = root.getAttribute('data-theme') === 'dark' ||
+          (!root.hasAttribute('data-theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        btn.classList.toggle('dark', dark);
+      }
+      btn.addEventListener('click', function() {
+        var cur = root.getAttribute('data-theme');
+        var next = cur === 'dark' ? 'light' : 'dark';
+        root.setAttribute('data-theme', next);
+        try { localStorage.setItem(KEY, next); } catch (e) {}
+        applyIcon();
+      });
+      applyIcon();
+    })();
+  </script>
 </body>
 </html>
