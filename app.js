@@ -14,7 +14,7 @@
   const rightStats = document.getElementById('right-stats');
   const loading = document.getElementById('loading');
 
-  const optTrimWhitespace = document.getElementById('opt-trim-whitespace');
+
   const optIgnoreCase = document.getElementById('opt-ignore-case');
   const optIgnoreWhitespace = document.getElementById('opt-ignore-whitespace');
   const optWordDiff = document.getElementById('opt-word-diff');
@@ -51,7 +51,7 @@
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
         const opts = JSON.parse(stored);
-        setToggle(optTrimWhitespace, opts.trimWhitespace ?? true);
+
         setToggle(optIgnoreCase, opts.ignoreCase ?? false);
         setToggle(optIgnoreWhitespace, opts.ignoreWhitespace ?? false);
         setToggle(optWordDiff, opts.wordDiff ?? true);
@@ -68,7 +68,7 @@
   function saveOptions() {
     try {
       const opts = {
-        trimWhitespace: getToggle(optTrimWhitespace),
+
         ignoreCase: getToggle(optIgnoreCase),
         ignoreWhitespace: getToggle(optIgnoreWhitespace),
         wordDiff: getToggle(optWordDiff),
@@ -209,14 +209,12 @@
   }
 
   function normalizeText(text, options) {
-    if (options.trimWhitespace) {
-      text = text.trim();
-    }
+  
     if (options.ignoreCase) {
       text = text.toLowerCase();
     }
     if (options.ignoreWhitespace) {
-      text = text.replace(/\s+/g, ' ');
+      text = text.replace(/[ \t\r\f\v]+/g, ' ');
     }
     return text;
   }
@@ -309,7 +307,61 @@
     if (totalTokens > MAX_TOKENS_FAST_PATH) {
       return diffTokensChunked(oldTokens, newTokens);
     }
-    return myersDiff(oldTokens, newTokens);
+    const diff = myersDiff(oldTokens, newTokens);
+    return refineDiffWithCharLevel(diff);
+  }
+
+  function refineDiffWithCharLevel(diff) {
+    const result = [];
+    let i = 0;
+    while (i < diff.length) {
+      const token = diff[i];
+      if (token.type === 'equal') {
+        result.push(token);
+        i++;
+        continue;
+      }
+
+      const removedSeq = [];
+      const addedSeq = [];
+
+      while (i < diff.length && diff[i].type === 'removed') {
+        removedSeq.push(diff[i].value);
+        i++;
+      }
+      while (i < diff.length && diff[i].type === 'added') {
+        addedSeq.push(diff[i].value);
+        i++;
+      }
+
+      if (removedSeq.length > 0 && addedSeq.length > 0) {
+        const oldText = removedSeq.join('');
+        const newText = addedSeq.join('');
+        if (oldText.length > 0 && newText.length > 0 && oldText.length < 5000 && newText.length < 5000) {
+          const charDiff = myersDiff(oldText.split(''), newText.split(''));
+          let hasActualChanges = false;
+          for (const ct of charDiff) {
+            if (ct.type !== 'equal') {
+              hasActualChanges = true;
+              break;
+            }
+          }
+          if (hasActualChanges) {
+            result.push(...charDiff.map(ct => ({ ...ct, type: ct.type === 'equal' ? 'equal' : ct.type })));
+          } else {
+            result.push(...removedSeq.map(v => ({ type: 'removed', value: v })));
+            result.push(...addedSeq.map(v => ({ type: 'added', value: v })));
+          }
+        } else {
+          result.push(...removedSeq.map(v => ({ type: 'removed', value: v })));
+          result.push(...addedSeq.map(v => ({ type: 'added', value: v })));
+        }
+      } else {
+        result.push(...removedSeq.map(v => ({ type: 'removed', value: v })));
+        result.push(...addedSeq.map(v => ({ type: 'added', value: v })));
+      }
+    }
+    return result;
   }
 
   function diffTokensChunked(oldTokens, newTokens) {
@@ -320,7 +372,7 @@
       const oldChunk = oldTokens.slice(i, i + chunkSize);
       const newChunk = newTokens.slice(i, i + chunkSize);
       const chunkDiff = myersDiff(oldChunk, newChunk);
-      result.push(...chunkDiff);
+      result.push(...refineDiffWithCharLevel(chunkDiff));
     }
 
     return result;
@@ -582,7 +634,7 @@
 
     setTimeout(() => {
       const options = {
-        trimWhitespace: getToggle(optTrimWhitespace),
+
         ignoreCase: getToggle(optIgnoreCase),
         ignoreWhitespace: getToggle(optIgnoreWhitespace),
         wordDiff: getToggle(optWordDiff),
@@ -692,7 +744,7 @@
       rightInput.value = data.right || '';
 
       if (data.options) {
-        setToggle(optTrimWhitespace, data.options.trimWhitespace ?? true);
+
         setToggle(optIgnoreCase, data.options.ignoreCase ?? false);
         setToggle(optIgnoreWhitespace, data.options.ignoreWhitespace ?? false);
         setToggle(optWordDiff, data.options.wordDiff ?? true);
@@ -770,7 +822,7 @@
   btnClear.addEventListener('click', clearAll);
   btnSwap.addEventListener('click', swapInputs);
 
-  [optTrimWhitespace, optIgnoreCase, optIgnoreWhitespace, optWordDiff, optShowUnchanged, optWrapLines].forEach(opt => {
+  [optIgnoreCase, optIgnoreWhitespace, optWordDiff, optShowUnchanged, optWrapLines].forEach(opt => {
     opt.addEventListener('click', () => {
       const newValue = !getToggle(opt);
       setToggle(opt, newValue);
