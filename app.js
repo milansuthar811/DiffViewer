@@ -38,17 +38,25 @@
   const RENDER_CHUNK_SIZE = 500;
   const VIRTUALIZATION_THRESHOLD = 2000;
 
+  function getToggle(toggle) {
+    return toggle.getAttribute('aria-checked') === 'true';
+  }
+
+  function setToggle(toggle, value) {
+    toggle.setAttribute('aria-checked', value ? 'true' : 'false');
+  }
+
   function loadOptions() {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
         const opts = JSON.parse(stored);
-        optTrimWhitespace.checked = opts.trimWhitespace ?? true;
-        optIgnoreCase.checked = opts.ignoreCase ?? false;
-        optIgnoreWhitespace.checked = opts.ignoreWhitespace ?? false;
-        optWordDiff.checked = opts.wordDiff ?? true;
-        optShowUnchanged.checked = opts.showUnchanged ?? true;
-        optWrapLines.checked = opts.wrapLines ?? true;
+        setToggle(optTrimWhitespace, opts.trimWhitespace ?? true);
+        setToggle(optIgnoreCase, opts.ignoreCase ?? false);
+        setToggle(optIgnoreWhitespace, opts.ignoreWhitespace ?? false);
+        setToggle(optWordDiff, opts.wordDiff ?? true);
+        setToggle(optShowUnchanged, opts.showUnchanged ?? true);
+        setToggle(optWrapLines, opts.wrapLines ?? true);
         currentDiffMode = opts.diffMode === 'unified' ? 'unified' : 'side-by-side';
       }
     } catch (e) {
@@ -60,12 +68,12 @@
   function saveOptions() {
     try {
       const opts = {
-        trimWhitespace: optTrimWhitespace.checked,
-        ignoreCase: optIgnoreCase.checked,
-        ignoreWhitespace: optIgnoreWhitespace.checked,
-        wordDiff: optWordDiff.checked,
-        showUnchanged: optShowUnchanged.checked,
-        wrapLines: optWrapLines.checked,
+        trimWhitespace: getToggle(optTrimWhitespace),
+        ignoreCase: getToggle(optIgnoreCase),
+        ignoreWhitespace: getToggle(optIgnoreWhitespace),
+        wordDiff: getToggle(optWordDiff),
+        showUnchanged: getToggle(optShowUnchanged),
+        wrapLines: getToggle(optWrapLines),
         diffMode: currentDiffMode
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(opts));
@@ -419,7 +427,7 @@
 
   function renderDiffLines(lines, pane, isLeft, options, startIdx, endIdx) {
     const showLineNumbers = true;
-    const wrapLines = optWrapLines.checked;
+    const wrapLines = getToggle(optWrapLines);
 
     const scrollWrapper = ensurePaneStructure(pane);
     const minimap = pane.querySelector('.diff-minimap');
@@ -574,11 +582,11 @@
 
     setTimeout(() => {
       const options = {
-        trimWhitespace: optTrimWhitespace.checked,
-        ignoreCase: optIgnoreCase.checked,
-        ignoreWhitespace: optIgnoreWhitespace.checked,
-        wordDiff: optWordDiff.checked,
-        showUnchanged: optShowUnchanged.checked
+        trimWhitespace: getToggle(optTrimWhitespace),
+        ignoreCase: getToggle(optIgnoreCase),
+        ignoreWhitespace: getToggle(optIgnoreWhitespace),
+        wordDiff: getToggle(optWordDiff),
+        showUnchanged: getToggle(optShowUnchanged)
       };
 
       const normLeft = normalizeText(leftText, options);
@@ -684,11 +692,11 @@
       rightInput.value = data.right || '';
 
       if (data.options) {
-        optTrimWhitespace.checked = data.options.trimWhitespace ?? true;
-        optIgnoreCase.checked = data.options.ignoreCase ?? false;
-        optIgnoreWhitespace.checked = data.options.ignoreWhitespace ?? false;
-        optWordDiff.checked = data.options.wordDiff ?? true;
-        optShowUnchanged.checked = data.options.showUnchanged ?? true;
+        setToggle(optTrimWhitespace, data.options.trimWhitespace ?? true);
+        setToggle(optIgnoreCase, data.options.ignoreCase ?? false);
+        setToggle(optIgnoreWhitespace, data.options.ignoreWhitespace ?? false);
+        setToggle(optWordDiff, data.options.wordDiff ?? true);
+        setToggle(optShowUnchanged, data.options.showUnchanged ?? true);
       }
 
       currentDiffData = data;
@@ -763,7 +771,9 @@
   btnSwap.addEventListener('click', swapInputs);
 
   [optTrimWhitespace, optIgnoreCase, optIgnoreWhitespace, optWordDiff, optShowUnchanged, optWrapLines].forEach(opt => {
-    opt.addEventListener('change', () => {
+    opt.addEventListener('click', () => {
+      const newValue = !getToggle(opt);
+      setToggle(opt, newValue);
       saveOptions();
       if (currentDiffData) runDiff();
     });
