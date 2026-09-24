@@ -402,13 +402,36 @@
     return lines;
   }
 
+  function ensurePaneStructure(pane) {
+    let scrollWrapper = pane.querySelector('.diff-pane-scroll');
+    if (!scrollWrapper) {
+      pane.innerHTML = '';
+      scrollWrapper = document.createElement('div');
+      scrollWrapper.className = 'diff-pane-scroll';
+      pane.appendChild(scrollWrapper);
+
+      const minimap = document.createElement('div');
+      minimap.className = 'diff-minimap';
+      pane.appendChild(minimap);
+    }
+    return scrollWrapper;
+  }
+
   function renderDiffLines(lines, pane, isLeft, options, startIdx, endIdx) {
     const showLineNumbers = true;
     const wrapLines = optWrapLines.checked;
 
+    const scrollWrapper = ensurePaneStructure(pane);
+    const minimap = pane.querySelector('.diff-minimap');
+
     const container = document.createElement('div');
     container.className = 'diff-pane-content';
     if (!wrapLines) container.style.whiteSpace = 'pre';
+
+    const totalLines = lines[isLeft ? 'left' : 'right'].length;
+    const paneHeight = pane.clientHeight || 400;
+
+    minimap.innerHTML = '';
 
     for (let i = startIdx; i < endIdx && i < lines[isLeft ? 'left' : 'right'].length; i++) {
       const line = lines[isLeft ? 'left' : 'right'][i];
@@ -417,6 +440,17 @@
       lineDiv.dataset.lineNum = line.num;
       if (line.hasChanges) {
         lineDiv.classList.add('diff-line-changed');
+
+        const badge = document.createElement('span');
+        badge.className = 'diff-change-badge ' + (isLeft ? 'removed' : 'added');
+        badge.textContent = isLeft ? '−' : '+';
+        lineDiv.appendChild(badge);
+
+        const markTop = (i / Math.max(1, totalLines - 1)) * paneHeight;
+        const mark = document.createElement('div');
+        mark.className = 'diff-minimap-mark ' + (isLeft ? 'removed' : 'added');
+        mark.style.top = markTop + 'px';
+        minimap.appendChild(mark);
       }
 
       if (showLineNumbers) {
@@ -445,11 +479,12 @@
 
   function renderVirtualized(diffLines, pane, isLeft, options) {
     const lineHeight = 24;
-    const containerHeight = pane.clientHeight;
+    const scrollWrapper = pane.querySelector('.diff-pane-scroll');
+    const containerHeight = scrollWrapper ? scrollWrapper.clientHeight : pane.clientHeight;
     const buffer = 50;
 
     function updateVisibleRange() {
-      const scrollTop = pane.scrollTop;
+      const scrollTop = scrollWrapper ? scrollWrapper.scrollTop : pane.scrollTop;
       const start = Math.max(0, Math.floor(scrollTop / lineHeight) - buffer);
       const end = Math.min(diffLines[isLeft ? 'left' : 'right'].length, Math.ceil((scrollTop + containerHeight) / lineHeight) + buffer);
 
@@ -459,21 +494,31 @@
       }
     }
 
-    pane.removeEventListener('scroll', updateVisibleRange);
-    pane.addEventListener('scroll', updateVisibleRange, { passive: true });
+    if (scrollWrapper) {
+      scrollWrapper.removeEventListener('scroll', updateVisibleRange);
+      scrollWrapper.addEventListener('scroll', updateVisibleRange, { passive: true });
+    } else {
+      pane.removeEventListener('scroll', updateVisibleRange);
+      pane.addEventListener('scroll', updateVisibleRange, { passive: true });
+    }
 
     updateVisibleRange();
   }
 
   function renderChunk(diffLines, pane, isLeft, options, start, end) {
-    const existingContent = pane.querySelector('.diff-pane-content');
+    const scrollWrapper = pane.querySelector('.diff-pane-scroll');
+    const existingContent = scrollWrapper ? scrollWrapper.querySelector('.diff-pane-content') : pane.querySelector('.diff-pane-content');
+    const newContent = renderDiffLines(diffLines, pane, isLeft, options, start, end);
     if (existingContent) {
-      const newContent = renderDiffLines(diffLines, pane, isLeft, options, start, end);
-      pane.replaceChild(newContent, existingContent);
+      (scrollWrapper || pane).replaceChild(newContent, existingContent);
     } else {
-      const content = renderDiffLines(diffLines, pane, isLeft, options, start, end);
-      pane.innerHTML = '';
-      pane.appendChild(content);
+      if (scrollWrapper) {
+        scrollWrapper.innerHTML = '';
+        scrollWrapper.appendChild(newContent);
+      } else {
+        pane.innerHTML = '';
+        pane.appendChild(newContent);
+      }
     }
   }
 
@@ -482,8 +527,9 @@
 
     if (totalLines <= VIRTUALIZATION_THRESHOLD) {
       const content = renderDiffLines(diffLines, pane, isLeft, options, 0, totalLines);
-      pane.innerHTML = '';
-      pane.appendChild(content);
+      const scrollWrapper = ensurePaneStructure(pane);
+      scrollWrapper.innerHTML = '';
+      scrollWrapper.appendChild(content);
       return;
     }
 
@@ -592,23 +638,32 @@
 
   let scrollSynced = false;
 
+  function getScrollWrapper(pane) {
+    return pane.querySelector('.diff-pane-scroll') || pane;
+  }
+
   function syncScroll() {
     if (!scrollSynced) {
-      leftPane.addEventListener('scroll', () => {
-        rightPane.scrollTop = leftPane.scrollTop;
-        rightPane.scrollLeft = leftPane.scrollLeft;
+      const leftWrapper = getScrollWrapper(leftPane);
+      const rightWrapper = getScrollWrapper(rightPane);
+
+      leftWrapper.addEventListener('scroll', () => {
+        rightWrapper.scrollTop = leftWrapper.scrollTop;
+        rightWrapper.scrollLeft = leftWrapper.scrollLeft;
       }, { passive: true });
 
-      rightPane.addEventListener('scroll', () => {
-        leftPane.scrollTop = rightPane.scrollTop;
-        leftPane.scrollLeft = rightPane.scrollLeft;
+      rightWrapper.addEventListener('scroll', () => {
+        leftWrapper.scrollTop = rightWrapper.scrollTop;
+        leftWrapper.scrollLeft = rightWrapper.scrollLeft;
       }, { passive: true });
 
       scrollSynced = true;
     }
 
-    leftPane.scrollTop = 0;
-    rightPane.scrollTop = 0;
+    const leftWrapper = getScrollWrapper(leftPane);
+    const rightWrapper = getScrollWrapper(rightPane);
+    leftWrapper.scrollTop = 0;
+    rightWrapper.scrollTop = 0;
   }
 
   function generateShareUrl() {
